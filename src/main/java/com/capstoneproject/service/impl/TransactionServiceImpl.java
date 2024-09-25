@@ -25,11 +25,6 @@ public class TransactionServiceImpl implements TransactionService {
     private AccountRepository accountRepository; // Assuming you have this repository for updating account balances
 
     @Override
-    public Transaction recordTransaction(Transaction transaction) {
-        return transactionRepository.save(transaction); // Save and return the recorded transaction
-    }
-
-    @Override
     public List<Transaction> getMergedTransactionHistory(String accountId) {
         // Retrieve transactions associated with the account ID
         List<Transaction> fromTransactions = transactionRepository.findByFromAccountId(accountId);

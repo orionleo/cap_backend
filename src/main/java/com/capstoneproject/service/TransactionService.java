@@ -6,8 +6,7 @@ import java.util.List;
 import com.capstoneproject.model.Transaction;
 import com.capstoneproject.model.Account;
 
-public interface TransactionService {
-    Transaction recordTransaction(Transaction transaction); // Record a new transaction
+public interface TransactionService { // Record a new transaction
     List<Transaction> getMergedTransactionHistory(String accountId); // Retrieve transaction history for an account
     
     void transferMoney(Account fromAccount, Account toAccount, BigDecimal amount); // Transfer money

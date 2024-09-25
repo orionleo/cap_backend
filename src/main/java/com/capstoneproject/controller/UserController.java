@@ -16,6 +16,16 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
+
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
@@ -109,41 +119,116 @@ public class UserController {
     }
 
     // 2. API to Generate a PDF of All Unique Transactions (to be implemented similarly)
-    // @GetMapping("/transactions/pdf")
-    // public void generateTransactionsPdf(
-    //         @RequestHeader("Authorization") String authHeader,
-    //         HttpServletResponse response) throws IOException {
-    //     try {
-    //         // Extract JWT token from Authorization header
-    //         String token = authHeader.substring(7);
+    @GetMapping("/transactions/pdf")
+    public void generateTransactionsPdf(
+            @RequestHeader("Authorization") String authHeader,
+            HttpServletResponse response) throws IOException {
+        try {
+            // Extract JWT token from Authorization header
+            String token = authHeader.substring(7);
 
-    //         // Extract userId from the JWT
-    //         String userId = jwtUtil.extractUserId(token);
+            // Extract userId from the JWT
+            String userId = jwtUtil.extractUserId(token);
 
-    //         // Retrieve all accounts for the user
-    //         List<Account> userAccounts = transactionService.getAccountsByUserId(userId);
+            // Retrieve all accounts for the user
+            List<Account> userAccounts = accountService.getAccountsByUser(userId);
 
-    //         // Collect all transactions into a single list
-    //         List<Transaction> allTransactions = new ArrayList<>();
-    //         for (Account account : userAccounts) {
-    //             List<Transaction> transactions = transactionService.getMergedTransactionHistory(account.getId());
-    //             allTransactions.addAll(transactions);
-    //         }
+            // Collect all transactions into a single list
+            List<Transaction> allTransactions = new ArrayList<>();
+            for (Account account : userAccounts) {
+                List<Transaction> transactions = transactionService.getMergedTransactionHistory(account.getId());
+                allTransactions.addAll(transactions);
+            }
 
-    //         // Remove duplicate transactions
-    //         List<Transaction> uniqueTransactions = allTransactions.stream()
-    //                 .distinct()
-    //                 .collect(Collectors.toList());
+            // Remove duplicate transactions
+            List<Transaction> uniqueTransactions = allTransactions.stream()
+                    .distinct()
+                    .collect(Collectors.toList());
 
-    //         // Set PDF response headers
-    //         response.setContentType("application/pdf");
-    //         response.setHeader("Content-Disposition", "attachment; filename=transactions.pdf");
+            System.out.println(uniqueTransactions);
 
-    //         // Generate PDF document using iText (or other library)
+            // Set PDF response headers
+            response.setContentType("application/pdf");
+            response.setHeader("Content-Disposition", "attachment; filename=transactions.pdf");
 
-    //     } catch (Exception e) {
-    //         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-    //         response.getWriter().write("Error generating PDF: " + e.getMessage());
-    //     }
-    // }
+            // Generate PDF document using iText (or other library)
+            Document document = new Document();
+            PdfWriter.getInstance(document, response.getOutputStream());
+
+            document.open();
+
+            // Add title
+            Font font = new Font(Font.FontFamily.HELVETICA, 16, Font.BOLD);
+            Paragraph title = new Paragraph("Transaction History", font);
+            title.setAlignment(Element.ALIGN_CENTER);
+            document.add(title);
+
+            document.add(new Paragraph("\n")); // Add a blank line
+
+            // Create a table with 5 columns: ID, FromAccount, ToAccount, Amount, Date
+            PdfPTable table = new PdfPTable(6);
+            table.setWidthPercentage(100);
+            table.setSpacingBefore(10f);
+
+            // Add table headers
+            addTableHeader(table);
+
+            // Add transactions to the table
+            for (Transaction txn : uniqueTransactions) {
+                addTransactionToTable(table, txn);
+            }
+
+            // Add the table to the document
+            document.add(table);
+
+            document.close();
+
+
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().write("Error generating PDF: " + e.getMessage());
+        }
+    }
+
+    // Helper method to add table headers
+    private void addTableHeader(PdfPTable table) {
+        Font headerFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD);
+        PdfPCell header;
+
+        header = new PdfPCell(new Phrase("ID", headerFont));
+        table.addCell(header);
+
+        header = new PdfPCell(new Phrase("From User", headerFont));
+        table.addCell(header);
+
+//        header = new PdfPCell(new Phrase("From Account", headerFont));
+//        table.addCell(header);
+
+        header = new PdfPCell(new Phrase("To User", headerFont));
+        table.addCell(header);
+
+//        header = new PdfPCell(new Phrase("To Account", headerFont));
+//        table.addCell(header);
+
+        header = new PdfPCell(new Phrase("Type", headerFont));
+        table.addCell(header);
+
+        header = new PdfPCell(new Phrase("Amount", headerFont));
+        table.addCell(header);
+
+        header = new PdfPCell(new Phrase("Date", headerFont));
+        table.addCell(header);
+    }
+
+    // Helper method to add a transaction row to the table
+    private void addTransactionToTable(PdfPTable table, Transaction txn) {
+        table.addCell(txn.getId()); // Transaction ID
+        table.addCell(txn.getFromUserEmail());
+//        table.addCell(txn.getFromAccountId()); // From account ID
+        table.addCell(txn.getToUserEmail());
+//        table.addCell(txn.getToAccountId()); // To account ID
+        table.addCell(txn.getTransactionType());
+        table.addCell(txn.getAmount().toString()); // Transaction amount
+        table.addCell(txn.getTimestamp().toString()); // Transaction date
+    }
 }
